@@ -3,11 +3,7 @@
 ## Visión General del Proyecto
 Un juego de cartas estilo solitario donde el objetivo es apilar exitosamente las 52 cartas de póker estándar sin superar la restricción de **máximo 26 cartas activas en la mesa** de forma simultánea. El juego cuenta con interacción **Drag & Drop** y **6 cartas especiales** (3 de beneficios y 3 de penalización/desafíos).
 
----
-
 ## 1. Hoja de Ruta Simple (Resumen Alto Nivel)
-
-```
 [Semana 1] Fundamentos y Tablero Base
    └── Estructura, mazo de 52 cartas, zonas del tablero y lógica del límite (26 cartas).
 
@@ -19,9 +15,6 @@ Un juego de cartas estilo solitario donde el objetivo es apilar exitosamente las
 
 [Semana 4] Interfaz Visual (UI/UX), Animaciones y Pulido
    └── Diseño visual deslumbrante, animaciones, sonidos, menús y testing.
-```
-
----
 
 ## 2. Hoja de Ruta Detallada
 
