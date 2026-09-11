@@ -41,8 +41,8 @@ class EscenaMenu(EscenaBase):
             "  Apilar las 52 cartas por palo en las fundaciones de A a K.",
             "",
             "2. REGLA CENTRAL DE MESA:",
-            "  Máximo de 26 cartas activas visibles en la mesa a la vez.",
-            "  Si alcanzas 26 cartas, no podrás robar más hasta despejar.",
+            "  Máximo de 20 casillas activas visibles en la mesa a la vez.",
+            "  Si alcanzas 20 casillas, no podrás robar más hasta despejar.",
             "",
             "3. CARTAS ESPECIALES:",
             "  Beneficios: Limpiador, Comodín, Magneto.",
@@ -78,6 +78,15 @@ class EscenaMenu(EscenaBase):
                     else:
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
 
+                # Presionar ESPACIO o ENTER en el menú inicia el Juego
+                elif not self.mostrar_modal_instrucciones and evento.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    if self.gestor:
+                        self.gestor.cambiar_escena(
+                            EstadoJuego.JUEGO,
+                            modo="Estratégico",
+                            limite_mesa=20
+                        )
+
                 # Desplazamiento por teclado en el modal de instrucciones
                 elif self.mostrar_modal_instrucciones:
                     if evento.key == pygame.K_DOWN:
@@ -102,12 +111,17 @@ class EscenaMenu(EscenaBase):
                             self.mostrar_modal_instrucciones = False
                 else:
                     if evento.button == 1:
-                        if "Jugar" in self.botones and self.botones["Jugar"].collidepoint(pos_mouse):
+                        # Clic en botón "Jugar" o "Juego" -> GestorEscenas cambia a EscenaJuego
+                        btn_juego_cliqueado = any(
+                            k in self.botones and self.botones[k].collidepoint(pos_mouse)
+                            for k in ("Jugar", "Juego")
+                        )
+                        if btn_juego_cliqueado:
                             if self.gestor:
                                 self.gestor.cambiar_escena(
                                     EstadoJuego.JUEGO,
                                     modo="Estratégico",
-                                    limite_mesa=26
+                                    limite_mesa=20
                                 )
 
                         elif "Instrucciones" in self.botones and self.botones["Instrucciones"].collidepoint(pos_mouse):
@@ -129,28 +143,34 @@ class EscenaMenu(EscenaBase):
         # Detalle de tapete (Marco interior)
         pygame.draw.rect(pantalla, (25, 65, 40), (15, 15, ancho - 30, alto - 30), 4, border_radius=12)
 
-        # 2. Título Provisorio "Solitario"
+        # 2. Cálculo de posición del bloque central (Título, Subtítulo y Botones centrados)
+        ancho_btn, alto_btn = 260, 52
+        espaciado_btn = 18
+        altura_botones = 3 * alto_btn + 2 * espaciado_btn
+        altura_bloque_total = 70 + 25 + 40 + altura_botones
+
+        y_top_bloque = (alto - altura_bloque_total) // 2
+
+        # Título Provisorio "Solitario"
         if self.fuente_titulo:
             surf_sombra = self.fuente_titulo.render("Solitario", True, (10, 25, 15))
-            pantalla.blit(surf_sombra, (ancho // 2 - surf_sombra.get_width() // 2 + 3, 103))
+            pantalla.blit(surf_sombra, (ancho // 2 - surf_sombra.get_width() // 2 + 3, y_top_bloque + 3))
 
             surf_titulo = self.fuente_titulo.render("Solitario", True, (240, 215, 120))
-            pantalla.blit(surf_titulo, (ancho // 2 - surf_titulo.get_width() // 2, 100))
+            pantalla.blit(surf_titulo, (ancho // 2 - surf_titulo.get_width() // 2, y_top_bloque))
 
         if self.fuente_subtitulo:
             surf_sub = self.fuente_subtitulo.render("Edición Estratégica con Cartas Especiales", True, (170, 210, 185))
-            pantalla.blit(surf_sub, (ancho // 2 - surf_sub.get_width() // 2, 180))
+            pantalla.blit(surf_sub, (ancho // 2 - surf_sub.get_width() // 2, y_top_bloque + 72))
 
-        # 3. Dibujar los tres botones principales: Jugar, Instrucciones, Salir
+        # 3. Dibujar los tres botones principales: Jugar, Instrucciones, Salir centrados
         pos_mouse = pygame.mouse.get_pos()
         nombres_botones = ["Jugar", "Instrucciones", "Salir"]
-        ancho_btn, alto_btn = 260, 52
-        y_inicial = 260
-        espaciado = 20
+        y_inicial_botones = y_top_bloque + 135
 
         for i, nombre in enumerate(nombres_botones):
             x_btn = (ancho - ancho_btn) // 2
-            y_btn = y_inicial + i * (alto_btn + espaciado)
+            y_btn = y_inicial_botones + i * (alto_btn + espaciado_btn)
             rect_btn = pygame.Rect(x_btn, y_btn, ancho_btn, alto_btn)
             self.botones[nombre] = rect_btn
 
