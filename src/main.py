@@ -44,7 +44,7 @@ def main() -> None:
     ejecutando = True
     while ejecutando:
         # Cálculo del tiempo delta (dt) en segundos
-        dt = reloj.tick(30) / 1000.0
+        dt = reloj.tick(FPS) / 1000.0
 
         # Captura y filtrado de eventos
         eventos = pygame.event.get()
