@@ -1,8 +1,10 @@
+from pathlib import Path
 from typing import Any, List, Tuple, Dict
 
 import pygame
 
 from core.escena_base import EscenaBase
+from core.entidades import Mazo
 from core.estados import EstadoJuego
 
 
@@ -18,8 +20,8 @@ class EscenaJuego(EscenaBase):
         super().__init__()
         self.modo: str = "Estratégico"
         self.limite_mesa: int = 20
-        self.cartas_activas: int = 7  # Ejemplo inicial para indicador
-        self.cartas_en_mazo: int = 45  # 52 cartas total - 7 iniciales repartidas
+        self.cartas_activas: int = 3  # Cartas repartidas al inicio
+        self.cartas_en_mazo: int = 49  # 52 cartas total - 3 iniciales repartidas
         self.movimientos_disponibles: bool = True
         self.puntuacion: int = 0
         self.tiempo_transcurrido: float = 0.0
@@ -43,6 +45,11 @@ class EscenaJuego(EscenaBase):
         # Almacenamiento de geometrías de las casillas y del mazo
         self.rects_casillas: List[pygame.Rect] = []
         self.rect_mazo: pygame.Rect | None = None
+
+        # Mazo de 52 cartas (se inicializa en al_entrar)
+        self.mazo: Mazo | None = None
+        # Cartas robadas del mazo que están activas en la mesa
+        self.cartas_en_mesa: List = []
 
         # Plantilla de texto de instrucciones
         self.plantilla_instrucciones: List[str] = [
@@ -70,7 +77,7 @@ class EscenaJuego(EscenaBase):
         """Recibe la configuración e inicializa recursos de la escena de juego."""
         self.modo = kwargs.get("modo", "Estratégico")
         self.limite_mesa = kwargs.get("limite_mesa", 20)
-        self.cartas_activas = kwargs.get("cartas_iniciales", 7)
+        self.cartas_activas = kwargs.get("cartas_iniciales", 3)
         self.cartas_en_mazo = kwargs.get("cartas_mazo", 52 - self.cartas_activas)
         self.movimientos_disponibles = kwargs.get("movimientos_disponibles", True)
         self.puntuacion = 0
@@ -89,8 +96,28 @@ class EscenaJuego(EscenaBase):
         self.fuente_modal_cuerpo = pygame.font.SysFont("Courier New", 15, bold=True)
         self.fuente_boton = pygame.font.SysFont("Arial", 20, bold=True)
 
+        # Instanciar el mazo completo de 52 cartas mezcladas
+        # Ruta: src/escenas/ -> src/ -> Card_Game/ -> sprites/
+        # Las dimensiones coinciden con las casillas del tablero (115x160)
+        ruta_sprites = Path(__file__).resolve().parent.parent.parent / "sprites"
+        self.mazo = Mazo(ruta_sprites=ruta_sprites, ancho_carta=115, alto_carta=160)
+
+        # Repartir las 3 cartas iniciales a la mesa
+        self.cartas_en_mesa.clear()
+        for _ in range(self.cartas_activas):
+            carta = self.mazo.robar()
+            if carta:
+                self.cartas_en_mesa.append(carta)
+
+        # Sincronizar el contador con el estado real del mazo
+        self.cartas_en_mazo = len(self.mazo)
+
     def manejar_eventos(self, eventos: List[pygame.event.Event]) -> None:
         pos_mouse = pygame.mouse.get_pos()
+
+        # Delegar eventos a las cartas en mesa para habilitar arrastre
+        for carta in self.cartas_en_mesa:
+            carta.manejar_eventos(eventos)
 
         for evento in eventos:
             if evento.type == pygame.KEYDOWN:
@@ -157,6 +184,21 @@ class EscenaJuego(EscenaBase):
                         elif "Seguir Jugando" in self.botones_pausa and self.botones_pausa["Seguir Jugando"].collidepoint(pos_mouse):
                             self.mostrar_modal_pausa = False
 
+                elif evento.button == 1:
+                    # Click sobre el mazo: robar 1 carta si hay disponibles y hay lugar en la mesa
+                    if (
+                        self.mazo is not None
+                        and self.rect_mazo is not None
+                        and self.rect_mazo.collidepoint(pos_mouse)
+                        and not self.mazo.esta_vacio()
+                        and self.cartas_activas < self.limite_mesa
+                    ):
+                        carta_robada = self.mazo.robar()
+                        if carta_robada:
+                            self.cartas_en_mesa.append(carta_robada)
+                            self.cartas_activas += 1
+                            self.cartas_en_mazo = len(self.mazo)
+
     def verificar_condiciones_fin_juego(self) -> None:
         """
         Evalúa las condiciones de Victoria y Derrota para cambiar el estado a GAME_OVER vía GestorEscenas:
@@ -196,6 +238,9 @@ class EscenaJuego(EscenaBase):
         self.puntuacion += int(dt * 10)  # Puntuación simulada
         self.verificar_condiciones_fin_juego()
 
+        for carta in self.cartas_en_mesa:
+            carta.actualizar()
+
     def dibujar(self, pantalla: pygame.Surface) -> None:
         pos_mouse = pygame.mouse.get_pos()
         ancho, alto = pantalla.get_size()
@@ -230,6 +275,12 @@ class EscenaJuego(EscenaBase):
 
         # 3. Dibujar las 20 casillas centradas (3 filas) y el mazo en la esquina inferior derecha
         self._dibujar_tablero_y_mazo(pantalla, alto_hud)
+
+        # 4b. Dibujar las cartas en mesa, ancladas a su casilla si no se arrastran
+        for i, carta in enumerate(self.cartas_en_mesa):
+            if i < len(self.rects_casillas) and not carta.siendo_arrastrada:
+                carta.rect.topleft = self.rects_casillas[i].topleft
+            carta.dibujar(pantalla)
 
         # 4. Texto de ayuda en la parte inferior izquierda
         if self.fuente_chica:
