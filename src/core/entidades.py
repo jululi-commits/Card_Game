@@ -229,3 +229,107 @@ class Carta:
         numero_str = str(self.numero) if self.numero is not None else "?"
         palo_str = self.palo if self.palo is not None else "?"
         return f"Carta({numero_str} de {palo_str}, pos={self.rect.topleft})"
+
+
+# ======================================================================== #
+#  Mazo                                                                      #
+# ======================================================================== #
+
+import random
+
+
+# Nombre de archivo base por número (2-10 usan el número directamente)
+_NOMBRE_NUMERO: dict[int, str] = {
+    1: "as",
+    11: "jota",
+    12: "reina",
+    13: "rey",
+}
+
+# Sufijo del palo en el nombre de archivo
+_SUFIJO_PALO: dict[str, str] = {
+    "Corazones": "corazon",
+    "Diamantes": "diamante",
+    "Tréboles":  "trebol",
+    "Picas":     "pica",
+}
+
+PALOS: tuple[str, ...] = ("Corazones", "Diamantes", "Tréboles", "Picas")
+
+
+class Mazo:
+    """
+    Representa el mazo completo de 52 cartas.
+
+    Responsabilidades:
+    - Generar las 52 instancias de ``Carta`` al construirse, asociando cada
+      una con su sprite según la convención ``{nombre}_{palo}.png``
+      (ej: ``as_corazon.png``, ``7_pica.png``, ``reina_diamante.png``).
+      Si el archivo no existe, ``Carta`` usa su placeholder automáticamente.
+    - Mezclar las cartas al inicio (``random.shuffle``).
+    - Exponer ``robar()`` para sacar una carta del tope.
+
+    Convención de nombres de sprite:
+        - Números 2-10 : ``"2"``, ``"3"``, … ``"10"``
+        - As (1)       : ``"as"``
+        - Jota (11)    : ``"jota"``
+        - Reina (12)   : ``"reina"``
+        - Rey (13)     : ``"rey"``
+        - Palos        : ``"corazon"``, ``"diamante"``, ``"trebol"``, ``"pica"``
+
+    Ejemplo de ruta completa: ``sprites/as_corazon.png``, ``sprites/10_trebol.png``
+    """
+
+    def __init__(
+        self,
+        ruta_sprites: str | Path,
+        ancho_carta: int = 100,
+        alto_carta: int = 140,
+    ) -> None:
+        """
+        :param ruta_sprites:  Carpeta que contiene los archivos PNG de las cartas.
+        :param ancho_carta:   Ancho en píxeles para todas las cartas.
+        :param alto_carta:    Alto en píxeles para todas las cartas.
+        """
+        self._ruta_sprites = Path(ruta_sprites)
+        self.cartas: list[Carta] = []
+
+        for palo in PALOS:
+            for numero in range(1, 14):
+                nombre_num = _NOMBRE_NUMERO.get(numero, str(numero))
+                nombre_palo = _SUFIJO_PALO[palo]
+                ruta = self._ruta_sprites / f"{nombre_num}_{nombre_palo}.png"
+                self.cartas.append(
+                    Carta(
+                        numero=numero,
+                        palo=palo,
+                        ancho=ancho_carta,
+                        alto=alto_carta,
+                        ruta_sprite=ruta,
+                    )
+                )
+
+        random.shuffle(self.cartas)
+
+    # ------------------------------------------------------------------ #
+    #  API pública                                                         #
+    # ------------------------------------------------------------------ #
+
+    def robar(self) -> Optional[Carta]:
+        """
+        Saca y devuelve la carta del tope del mazo.
+        Devuelve ``None`` si el mazo está vacío.
+        """
+        return self.cartas.pop() if self.cartas else None
+
+    def esta_vacio(self) -> bool:
+        """``True`` si no quedan cartas en el mazo."""
+        return len(self.cartas) == 0
+
+    def __len__(self) -> int:
+        """Número de cartas restantes en el mazo."""
+        return len(self.cartas)
+
+    def __repr__(self) -> str:
+        return f"Mazo({len(self.cartas)} cartas restantes)"
+
